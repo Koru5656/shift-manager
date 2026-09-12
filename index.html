@@ -1,5 +1,3 @@
-<!DOCTYPE html>
-<html lang="ja">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -522,7 +520,7 @@ const PART_RULES = {
 };
 const DOW=['日','月','火','水','木','金','土'];
 const LABELS={work:"出",off:"休",paid:"有"};
-const STORAGE_KEY='shift_manager_v2';
+// クラウド保存モード
 const TODAY=new Date();
 
 // ===== STATE =====
@@ -547,35 +545,14 @@ let cloudSyncTimer=null;
 
 function save(){
   try{
-    localStorage.setItem(STORAGE_KEY,JSON.stringify({shifts,attendance,fixedDays,shiftTimes,sheetsUrl}));
+    clearTimeout(cloudSyncTimer);
+    cloudSyncTimer=setTimeout(function(){uploadToCloud(false);},2000);
     flashSave();
-    // クラウド同期：連続入力の負荷を減らすため2秒後にまとめてアップロード
-    if(sheetsUrl){
-      clearTimeout(cloudSyncTimer);
-      cloudSyncTimer=setTimeout(()=>uploadToCloud(false),2000);
-    }
   }catch(e){console.warn('save failed',e)}
 }
 
 function load(){
-  try{
-    const raw=localStorage.getItem(STORAGE_KEY);
-    if(!raw)return;
-    const d=JSON.parse(raw);
-    if(d.shifts)shifts=d.shifts;
-    if(d.attendance)attendance=d.attendance;
-    if(d.sheetsUrl)sheetsUrl=d.sheetsUrl;
-    if(d.fixedDays){
-      employees.forEach(e=>{
-        if(d.fixedDays[e.id]!==undefined)fixedDays[e.id]=d.fixedDays[e.id];
-      });
-    }
-    if(d.shiftTimes){
-      employees.forEach(e=>{
-        if(d.shiftTimes[e.id])shiftTimes[e.id]=d.shiftTimes[e.id];
-      });
-    }
-  }catch(e){console.warn('load failed',e)}
+  // Apps ScriptモードではdownloadFromCloudで取得
 }
 
 // クラウドにアプリ全データを分割GETで送信（file://からでも動作）
@@ -606,7 +583,7 @@ async function downloadFromCloud(){
   try{
     const b=document.getElementById('save-badge');
     b.textContent='☁ クラウドから取得中...';
-    const res=await fetch(`${sheetsUrl}?action=loadAll&t=${Date.now()}`);
+    const res=await fetch(`${sheetsUrl}?action=loadAll&t=${Date.now()}`,{redirect:'follow'});
     const text=await res.text();
     if(!text||text==='{}'){
       b.textContent='● 自動保存中';
@@ -1409,7 +1386,7 @@ function cloudDownload(){
 }
 
 // ===== SHEETS INTEGRATION =====
-let sheetsUrl='';
+let sheetsUrl='https://script.google.com/macros/s/AKfycbxh-5Z9yKnUm1c3diuvmI5m8TO7oHDJ9mPHxQDOcN3j1MJE2UF-7Ai9PpzYFDTyVL2Z/exec';
 function saveSheetUrl(){
   sheetsUrl=document.getElementById('sheets-url').value.trim();
   if(!sheetsUrl){showSheetsStatus('URLを入力してください','err');return}
@@ -1537,7 +1514,7 @@ async function doClock(type){
     document.getElementById('status').textContent='';
   }
 }
-<\/script></body></html>`;
+<\/script></body>`;
   const blob=new Blob([html],{type:'text/html'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
@@ -1852,25 +1829,20 @@ function initAttSelect(){
 }
 
 // 起動時：まずlocalStorageを読み込み、URLがあればクラウドからも取得して最新化
-load();
 initAttSelect();
 initCloudButtons();
 render();
-
-if(sheetsUrl){
-  downloadFromCloud().then(function(ok){
-    if(ok){
-      document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active')});
-      document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active')});
-      var shiftTab=document.getElementById('tab-shift');
-      if(shiftTab)shiftTab.classList.add('active');
-      var firstTab=document.querySelector('.tab');
-      if(firstTab)firstTab.classList.add('active');
-      render();
-      renderAttendance();
-    }
-  });
-}
+// 起動時にクラウドから自動取得
+downloadFromCloud().then(function(ok){
+  document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active')});
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active')});
+  var shiftTab=document.getElementById('tab-shift');
+  if(shiftTab)shiftTab.classList.add('active');
+  var firstTab=document.querySelector('.tab');
+  if(firstTab)firstTab.classList.add('active');
+  render();
+  renderAttendance();
+});
 </script>
 </body>
-</html>
+
