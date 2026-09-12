@@ -583,13 +583,22 @@ async function downloadFromCloud(){
   try{
     const b=document.getElementById('save-badge');
     b.textContent='☁ クラウドから取得中...';
-    const res=await fetch(`${sheetsUrl}?action=loadAll&t=${Date.now()}`,{redirect:'follow'});
+    const res=await fetch(`${sheetsUrl}?action=loadAll&t=${Date.now()}`,{
+      method:'GET',
+      redirect:'follow',
+      mode:'cors'
+    });
     const text=await res.text();
-    if(!text||text==='{}'){
+    // HTMLが返ってきた場合はスキップ
+    if(!text||text.trim().startsWith('<')){
       b.textContent='● 自動保存中';
       return false;
     }
     const d=JSON.parse(text);
+    if(!d||!d.shifts){
+      b.textContent='● 自動保存中';
+      return false;
+    }
     if(d.shifts)shifts=d.shifts;
     if(d.attendance)attendance=d.attendance;
     if(d.payrollMemos)localStorage.setItem('payroll_memos',JSON.stringify(d.payrollMemos));
@@ -603,7 +612,6 @@ async function downloadFromCloud(){
         if(d.shiftTimes[e.id])shiftTimes[e.id]=d.shiftTimes[e.id];
       });
     }
-    // localStorageも更新
     localStorage.setItem(STORAGE_KEY,JSON.stringify({shifts,attendance,fixedDays,shiftTimes,sheetsUrl}));
     b.textContent='● 自動保存中';
     return true;
