@@ -594,7 +594,23 @@ async function downloadFromCloud(){
       b.textContent='● 自動保存中';
       return false;
     }
-    const d=JSON.parse(text);
+    // JSONのパース：まず全体を試み、失敗したら最初の完全なJSONオブジェクトを抽出
+    let d;
+    try{
+      d=JSON.parse(text);
+    }catch(e1){
+      try{
+        // 最初の{から最後の}を探す
+        const start=text.indexOf('{');
+        const end=text.lastIndexOf('}');
+        if(start>=0&&end>start){
+          d=JSON.parse(text.substring(start,end+1));
+        }
+      }catch(e2){
+        b.textContent='● 自動保存中';
+        return false;
+      }
+    }
     if(!d||!d.shifts){
       b.textContent='● 自動保存中';
       return false;
