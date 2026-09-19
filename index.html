@@ -586,7 +586,8 @@ async function downloadFromCloud(){
     const res=await fetch(`${sheetsUrl}?action=loadAll&t=${Date.now()}`,{
       method:'GET',
       redirect:'follow',
-      mode:'cors'
+      mode:'cors',
+      credentials:'omit'
     });
     const text=await res.text();
     // HTMLが返ってきた場合はスキップ
@@ -1410,7 +1411,7 @@ function cloudDownload(){
 }
 
 // ===== SHEETS INTEGRATION =====
-let sheetsUrl='https://script.google.com/macros/s/AKfycbxh-5Z9yKnUm1c3diuvmI5m8TO7oHDJ9mPHxQDOcN3j1MJE2UF-7Ai9PpzYFDTyVL2Z/exec';
+let sheetsUrl='https://script.google.com/macros/s/AKfycbxrq_407tiWTbOccQkX4ZOTG6ZRWO9UHeQlYoUU5pzw4MvI6p8TVmuXfp7F9-cBm-ce/exec';
 function saveSheetUrl(){
   sheetsUrl=document.getElementById('sheets-url').value.trim();
   if(!sheetsUrl){showSheetsStatus('URLを入力してください','err');return}
