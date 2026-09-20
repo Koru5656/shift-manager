@@ -1821,29 +1821,44 @@ function initCloudButtons(){
     uploadToCloud(false);
     const b=document.getElementById('save-badge');
     b.textContent='☁ 保存中...';
-    setTimeout(()=>{b.textContent='● 自動保存中';},3000);
+    setTimeout(function(){b.textContent='● 自動保存中';},3000);
   };
   if(dl) dl.onclick=function(){
     const b=document.getElementById('save-badge');
     b.textContent='☁ 取得中...';
-    downloadFromCloud().then(function(ok){
-      if(ok){
-        // タブをシフト管理に切り替えてから再描画
+    (async function(){
+      try{
+        const url=sheetsUrl+'?action=loadAll&t='+Date.now();
+        const r=await fetch(url,{redirect:'follow',credentials:'omit'});
+        const t=await r.text();
+        if(!t||t.trim().startsWith('<')){
+          b.textContent='● 自動保存中';
+          alert('クラウドにデータがありません。先に「☁ 保存」を押してください。');
+          return;
+        }
+        const d=JSON.parse(t);
+        if(!d||!d.shifts){
+          b.textContent='● 自動保存中';
+          alert('クラウドにデータがありません。先に「☁ 保存」を押してください。');
+          return;
+        }
+        shifts=d.shifts;
+        attendance=d.attendance;
+        if(d.payrollMemos)localStorage.setItem('payroll_memos',JSON.stringify(d.payrollMemos));
+        if(d.fixedDays)employees.forEach(function(e){if(d.fixedDays[e.id]!==undefined)fixedDays[e.id]=d.fixedDays[e.id];});
+        if(d.shiftTimes)employees.forEach(function(e){if(d.shiftTimes[e.id])shiftTimes[e.id]=d.shiftTimes[e.id];});
         document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active')});
+        document.querySelector('.tab-panel').classList.add('active');
         document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active')});
-        var shiftTab=document.getElementById('tab-shift');
-        if(shiftTab)shiftTab.classList.add('active');
-        var firstTab=document.querySelector('.tab');
-        if(firstTab)firstTab.classList.add('active');
+        document.querySelector('.tab').classList.add('active');
         render();
-        renderAttendance();
         b.textContent='✓ 取得しました';
         setTimeout(function(){b.textContent='● 自動保存中';},2000);
-      } else {
+      }catch(e){
         b.textContent='● 自動保存中';
-        alert('クラウドにデータがありません。先に「☁ 保存」を押してください。');
+        alert('エラー:'+e.message);
       }
-    });
+    })();
   };
 }
 
