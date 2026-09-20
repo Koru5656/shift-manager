@@ -555,23 +555,18 @@ function load(){
   // Apps ScriptモードではdownloadFromCloudで取得
 }
 
-// クラウドにアプリ全データを分割GETで送信（file://からでも動作）
+// クラウドにアプリ全データをPOSTで一括送信
 async function uploadToCloud(showMsg=true){
   if(!sheetsUrl)return;
   try{
     const memos=JSON.parse(localStorage.getItem('payroll_memos')||'{}');
-    const payload=JSON.stringify({shifts,attendance,fixedDays,shiftTimes,payrollMemos:memos});
-    // 500文字ずつ分割して送信
-    const chunkSize=500;
-    const chunks=[];
-    for(let i=0;i<payload.length;i+=chunkSize){
-      chunks.push(payload.slice(i,i+chunkSize));
-    }
-    for(let i=0;i<chunks.length;i++){
-      const url=`${sheetsUrl}?action=saveChunk&idx=${i}&chunk=${encodeURIComponent(chunks[i])}`;
-      await fetch(url,{mode:'no-cors'});
-    }
-    if(showMsg)showSheetsStatus(`クラウドに保存しました（${chunks.length}件送信）`,'ok');
+    const data=JSON.stringify({shifts,attendance,fixedDays,shiftTimes,payrollMemos:memos});
+    const res=await fetch(sheetsUrl,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'saveAll',data:data})
+    });
+    if(showMsg)showSheetsStatus('クラウドに保存しました','ok');
   }catch(e){
     if(showMsg)showSheetsStatus('クラウド保存に失敗しました','err');
   }
