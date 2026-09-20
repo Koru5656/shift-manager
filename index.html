@@ -1864,21 +1864,27 @@ function initAttSelect(){
   employees.forEach(e=>sel.add(new Option(e.name,e.id)));
 }
 
-// 起動時：まずlocalStorageを読み込み、URLがあればクラウドからも取得して最新化
-initAttSelect();
-initCloudButtons();
-render();
-// 起動時にクラウドから自動取得
-downloadFromCloud().then(function(ok){
-  document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active')});
-  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active')});
-  var shiftTab=document.getElementById('tab-shift');
-  if(shiftTab)shiftTab.classList.add('active');
-  var firstTab=document.querySelector('.tab');
-  if(firstTab)firstTab.classList.add('active');
+function startApp(){
+  initAttSelect();
+  initCloudButtons();
   render();
-  renderAttendance();
-});
+  // 起動時にクラウドから自動取得
+  downloadFromCloud().then(function(ok){
+    document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active')});
+    document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active')});
+    var shiftTab=document.getElementById('tab-shift');
+    if(shiftTab)shiftTab.classList.add('active');
+    var firstTab=document.querySelector('.tab');
+    if(firstTab)firstTab.classList.add('active');
+    render();
+    renderAttendance();
+  });
+}
+
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',startApp);
+}else{
+  startApp();
+}
 </script>
 </body>
-
