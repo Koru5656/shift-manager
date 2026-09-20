@@ -555,14 +555,15 @@ function load(){
   // Apps ScriptモードではdownloadFromCloudで取得
 }
 
-// クラウドにアプリ全データをPOSTで一括送信
+// クラウドにアプリ全データをPOSTで送信（no-cors）
 async function uploadToCloud(showMsg=true){
   if(!sheetsUrl)return;
   try{
     const memos=JSON.parse(localStorage.getItem('payroll_memos')||'{}');
     const data=JSON.stringify({shifts,attendance,fixedDays,shiftTimes,payrollMemos:memos});
-    const res=await fetch(sheetsUrl,{
+    await fetch(sheetsUrl,{
       method:'POST',
+      mode:'no-cors',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({action:'saveAll',data:data})
     });
