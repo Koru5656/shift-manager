@@ -555,19 +555,33 @@ function load(){
   // Apps ScriptモードではdownloadFromCloudで取得
 }
 
-// クラウドにアプリ全データをPOSTで送信（no-cors）
-async function uploadToCloud(showMsg=true){
+// クラウドにアプリ全データを分割GETで保存
+async function uploadToCloud(showMsg){
   if(!sheetsUrl)return;
   try{
     const memos=JSON.parse(localStorage.getItem('payroll_memos')||'{}');
-    const data=JSON.stringify({shifts,attendance,fixedDays,shiftTimes,payrollMemos:memos});
-    await fetch(sheetsUrl,{
-      method:'POST',
-      mode:'no-cors',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({action:'saveAll',data:data})
+    // 直近5ヶ月分のみ保存（過去1ヶ月〜未来4ヶ月）
+    const now=new Date();
+    const minY=now.getFullYear(),minM=now.getMonth()-1<0?11:now.getMonth()-1;
+    const minYY=now.getMonth()-1<0?now.getFullYear()-1:now.getFullYear();
+    const maxY=now.getFullYear(),maxM=(now.getMonth()+4)%12;
+    const maxYY=(now.getMonth()+4)>11?now.getFullYear()+1:now.getFullYear();
+    const activeShifts={};
+    Object.keys(shifts).forEach(function(k){
+      const p=k.split('_');
+      const y=parseInt(p[1]),m=parseInt(p[2]);
+      const after=(y>minYY||(y===minYY&&m>=minM));
+      const before=(y<maxYY||(y===maxYY&&m<=maxM));
+      if(after&&before)activeShifts[k]=shifts[k];
     });
-    if(showMsg)showSheetsStatus('クラウドに保存しました','ok');
+    const data=JSON.stringify({shifts:activeShifts,attendance:attendance,fixedDays:fixedDays,shiftTimes:shiftTimes,payrollMemos:memos});
+    const chunkSize=80;
+    const chunks=[];
+    for(var i=0;i<data.length;i+=chunkSize)chunks.push(data.slice(i,i+chunkSize));
+    for(var i=0;i<chunks.length;i++){
+      await fetch(sheetsUrl+'?action=save&idx='+i+'&chunk='+encodeURIComponent(chunks[i]),{credentials:'omit'});
+    }
+    if(showMsg)showSheetsStatus('クラウドに保存しました（'+chunks.length+'件）','ok');
   }catch(e){
     if(showMsg)showSheetsStatus('クラウド保存に失敗しました','err');
   }
@@ -579,12 +593,7 @@ async function downloadFromCloud(){
   try{
     const b=document.getElementById('save-badge');
     b.textContent='☁ クラウドから取得中...';
-    const res=await fetch(`${sheetsUrl}?action=loadAll&t=${Date.now()}`,{
-      method:'GET',
-      redirect:'follow',
-      mode:'cors',
-      credentials:'omit'
-    });
+    const res=await fetch(sheetsUrl+'?action=load&t='+Date.now(),{credentials:'omit'});
     const text=await res.text();
     // HTMLが返ってきた場合はスキップ
     if(!text||text.trim().startsWith('<')){
@@ -1407,7 +1416,7 @@ function cloudDownload(){
 }
 
 // ===== SHEETS INTEGRATION =====
-let sheetsUrl='https://script.google.com/macros/s/AKfycbxrq_407tiWTbOccQkX4ZOTG6ZRWO9UHeQlYoUU5pzw4MvI6p8TVmuXfp7F9-cBm-ce/exec';
+var sheetsUrl='https://script.google.com/macros/s/AKfycbxrq_407tiWTbOccQkX4ZOTG6ZRWO9UHeQlYoUU5pzw4MvI6p8TVmuXfp7F9-cBm-ce/exec';
 function saveSheetUrl(){
   sheetsUrl=document.getElementById('sheets-url').value.trim();
   if(!sheetsUrl){showSheetsStatus('URLを入力してください','err');return}
@@ -1424,7 +1433,7 @@ async function syncFromSheets(){
   if(!sheetsUrl){showSheetsStatus('先にURLを設定してください','err');return}
   showSheetsStatus('取得中...','ok');
   try{
-    const res=await fetch(sheetsUrl+'?t='+Date.now());
+    const res=await fetch(sheetsUrl+'?action=loadClock&t='+Date.now());
     const data=await res.json();
     let cnt=0, skipped=0;
     Object.entries(data).forEach(([k,v])=>{
@@ -1524,8 +1533,8 @@ async function doClock(type){
   if(!SHEETS_URL){res.textContent='URLが設定されていません';res.className='result err';return}
   document.getElementById('status').textContent='送信中...';
   try{
-    const fetchUrl=SHEETS_URL+'?action=post&key='+encodeURIComponent(key)+'&field='+type+'&val='+encodeURIComponent(t);
-    await fetch(fetchUrl,{mode:'no-cors'});
+    const fetchUrl=SHEETS_URL+'?action=clock&key='+encodeURIComponent(key)+'&field='+type+'&val='+encodeURIComponent(t);
+    await fetch(fetchUrl);
     res.textContent=(type==='in'?'出勤':'退勤')+' '+t+' を記録しました';
     res.className='result ok';
     document.getElementById('status').textContent=(type==='in'?'出勤 ':'退勤 ')+t+' 記録済み';
