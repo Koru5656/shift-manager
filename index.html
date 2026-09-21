@@ -978,8 +978,13 @@ localLoad();
 EMPS.forEach(function(e){
   document.getElementById('att-emp').add(new Option(e.name,e.id));
 });
-document.getElementById('btn-save').onclick=function(){
-  cloudSave();
+document.getElementById('btn-save').onclick=async function(){
+  setBadge('☁ 保存中...','#dceefb','#0C447C');
+  try{
+    const data=JSON.stringify({shifts:shifts,attend:attend,fixed:fixed,memos:memos});
+    await fetch(sheetsUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'saveAll',data:data})});
+    setBadge('● 同期済み','#dff2d4','#27500A');
+  }catch(e){setBadge('⚠ 保存失敗','#fde4e4','#7A1F1F');}
 };
 document.getElementById('btn-load').onclick=function(){
   cloudLoad().then(function(ok){
